@@ -11,6 +11,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -48,8 +49,8 @@ fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
 @Preview
 @Composable
 fun GameScreen() {
-    val boardViewModel = viewModel(BoardViewModel::class.java)
 
+    val gameViewModel: GameViewModel = viewModel()
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -67,16 +68,19 @@ fun GameScreen() {
                 tint = Color(0xff5c5652),
                 modifier = Modifier
                     .size(48.dp)
-                    .clickable { /* Handle settings click */ }
+                    .clickable { gameViewModel.currentScreen = Screens.SETTINGS }
             )
 
             Box(
                 modifier = Modifier
-                    .border(BorderStroke(3.dp, Color(0xff5c5652)), shape = RoundedCornerShape(20.dp))
+                    .border(
+                        BorderStroke(3.dp, Color(0xff5c5652)),
+                        shape = RoundedCornerShape(20.dp)
+                    )
                     .clickable { /* Handle button click */ }
             ) {
                 Text(
-                    text = "Player vs AI",
+                    text = "Player vs ${gameViewModel.vs.displayName}",
                     color = Color(0xff5c5652),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -91,7 +95,7 @@ fun GameScreen() {
                 tint = Color(0xff5c5652),
                 modifier = Modifier
                     .size(48.dp)
-                    .clickable { /* Handle leaderboard click */ }
+                    .clickable { gameViewModel.currentScreen = Screens.PAST_GAMES }
             )
         }
 
@@ -111,8 +115,23 @@ fun GameScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        GameBoard(boardState = boardViewModel.boardState, onClick = { row, col ->
-                boardViewModel.onClick(row, col)
+        GameBoard(boardState = gameViewModel.boardState, onClick = { row, col ->
+                when (gameViewModel.vs) {
+                    VS.AI -> {
+                        gameViewModel.makeNextMove('X', row, col)
+                        val result = getNextMoveFromAI(gameViewModel.getBoard(), gameViewModel.difficulty)
+                        gameViewModel.makeNextMove('O', result.first, result.second)
+                    }
+                    VS.LOCAL -> {
+                        gameViewModel.makeNextMove(gameViewModel.nextPlayer, row, col)
+                    }
+                    VS.BLUETOOTH -> {
+                        if (gameViewModel.currentPlayerSymbol == gameViewModel.nextPlayer) {
+                            gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol, row, col)
+                            // TODO: Add logic to transmit move to other player.
+                        }
+                    }
+                }
             },
         )
 
@@ -130,20 +149,22 @@ fun GameScreen() {
                         BorderStroke(4.dp, Color(0xff5c5652)),
                         shape = RoundedCornerShape(30.dp)
                     )
-                    .clickable { /* Handle button click */ }
+                    .clickable {
+                        gameViewModel.resetBoard()
+                        gameViewModel.playing.value = true
+                    }
             ) {
-                Row {
-                    Icon(
-                        painter = painterResource(R.drawable.play),
-                        contentDescription = "Play",
-                        tint = Color(0xff5c5652),
-                        modifier = Modifier
-                            .size(72.dp)
-                    )
-                }
+                Icon(
+                    painter = if (gameViewModel.playing.collectAsState().value) painterResource(R.drawable.restart) else painterResource(R.drawable.play),
+                    contentDescription = "Play/Restart",
+                    tint = Color(0xff5c5652),
+                    modifier = Modifier
+                        .size(72.dp)
+                )
 
             }
         }
+
     }
 
 }
