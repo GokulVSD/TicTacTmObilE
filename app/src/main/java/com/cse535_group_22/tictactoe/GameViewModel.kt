@@ -51,6 +51,15 @@ class GameViewModel() : ViewModel() {
         moveCounter = 0
     }
 
+
+    fun resetGame() {
+        resetBoard()
+        currentPlayerSymbol = ' '
+        playing.value = false
+        connected.value = false
+    }
+
+
     fun getStatus(counter: Int): String {
         when (vs) {
             VS.AI -> {

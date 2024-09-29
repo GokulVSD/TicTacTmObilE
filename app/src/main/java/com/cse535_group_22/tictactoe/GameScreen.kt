@@ -99,7 +99,10 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
                                     ),
                                     shape = RoundedCornerShape(20.dp)
                                 )
-                                .clickable { gameViewModel.vs = VS.AI }
+                                .clickable {
+                                    gameViewModel.vs = VS.AI
+                                    gameViewModel.resetGame()
+                                }
                         ) {
                             Text(
                                 text = VS.AI.displayName,
@@ -124,7 +127,10 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
                                     ),
                                     shape = RoundedCornerShape(20.dp)
                                 )
-                                .clickable { gameViewModel.vs = VS.LOCAL }
+                                .clickable {
+                                    gameViewModel.vs = VS.LOCAL
+                                    gameViewModel.resetGame()
+                                }
                         ) {
                             Text(
                                 text = VS.LOCAL.displayName,
@@ -149,7 +155,10 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
                                     ),
                                     shape = RoundedCornerShape(20.dp)
                                 )
-                                .clickable { gameViewModel.vs = VS.BLUETOOTH }
+                                .clickable {
+                                    gameViewModel.vs = VS.BLUETOOTH
+                                    gameViewModel.resetGame()
+                                }
                         ) {
                             Text(
                                 text = VS.BLUETOOTH.displayName,
