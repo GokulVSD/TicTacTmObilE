@@ -7,11 +7,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -19,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 @Composable
 fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
@@ -46,11 +55,154 @@ fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
     }
 }
 
+@Composable
+fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
+    val gameViewModel: GameViewModel = viewModel()
+
+    if (isOpen) {
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                tonalElevation = 8.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Game Mode",
+                        color = Color(0xff5c5652),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    BorderStroke(
+                                        3.dp,
+                                        if (gameViewModel.vs == VS.AI) Color(
+                                            0xff5c5652
+                                        ) else Color.LightGray
+                                    ),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { gameViewModel.vs = VS.AI }
+                        ) {
+                            Text(
+                                text = VS.AI.displayName,
+                                color = if (gameViewModel.vs == VS.AI) Color(
+                                    0xff5c5652
+                                ) else Color.LightGray,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .padding(12.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    BorderStroke(
+                                        3.dp,
+                                        if (gameViewModel.vs == VS.LOCAL) Color(
+                                            0xff5c5652
+                                        ) else Color.LightGray
+                                    ),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { gameViewModel.vs = VS.LOCAL }
+                        ) {
+                            Text(
+                                text = VS.LOCAL.displayName,
+                                color = if (gameViewModel.vs == VS.LOCAL) Color(
+                                    0xff5c5652
+                                ) else Color.LightGray,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .padding(12.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    BorderStroke(
+                                        3.dp,
+                                        if (gameViewModel.vs == VS.BLUETOOTH) Color(
+                                            0xff5c5652
+                                        ) else Color.LightGray
+                                    ),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .clickable { gameViewModel.vs = VS.BLUETOOTH }
+                        ) {
+                            Text(
+                                text = VS.BLUETOOTH.displayName,
+                                color = if (gameViewModel.vs == VS.BLUETOOTH) Color(
+                                    0xff5c5652
+                                ) else Color.LightGray,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .padding(12.dp)
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    BorderStroke(4.dp, Color(0xff5c5652)),
+                                    shape = RoundedCornerShape(30.dp)
+                                )
+                                .clickable {
+                                    onDismiss()
+                                }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.back),
+                                contentDescription = "Back",
+                                tint = Color(0xff5c5652),
+                                modifier = Modifier
+                                    .size(48.dp)
+                            )
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Preview
 @Composable
 fun GameScreen() {
 
     val gameViewModel: GameViewModel = viewModel()
+
+    var isGameModeDialogOpen by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -77,10 +229,10 @@ fun GameScreen() {
                         BorderStroke(3.dp, Color(0xff5c5652)),
                         shape = RoundedCornerShape(20.dp)
                     )
-                    .clickable { /* Handle button click */ }
+                    .clickable { isGameModeDialogOpen = true }
             ) {
                 Text(
-                    text = "Player vs ${gameViewModel.vs.displayName}",
+                    text = gameViewModel.vs.displayName,
                     color = Color(0xff5c5652),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
@@ -106,12 +258,14 @@ fun GameScreen() {
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Tic Tac Toe",
+                text = gameViewModel.getStatus(gameViewModel.moveCounter),
                 color = Color(0xff5c5652),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
         }
+
+        GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false })
 
         Spacer(modifier = Modifier.height(16.dp))
 

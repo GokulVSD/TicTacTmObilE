@@ -42,7 +42,7 @@ fun TableCell(content: String, modifier: Modifier) {
 @Composable
 fun PastGames() {
     Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        TableCell(content = "Date Time", modifier = Modifier.weight(1f))
+        TableCell(content = "Date Time", modifier = Modifier.weight(1.5f))
         TableCell(content = "Winner", modifier = Modifier.weight(1f))
     }
     LazyColumn(
@@ -53,8 +53,8 @@ fun PastGames() {
     ) {
         items(12) { rowIndex ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                TableCell(content = "Cell ${rowIndex * 2 + 1}", modifier = Modifier.weight(1f))
-                TableCell(content = "Cell ${rowIndex * 2 + 2}", modifier = Modifier.weight(1f))
+                TableCell(content = "2024/05/31 22:55:22", modifier = Modifier.weight(1.5f))
+                TableCell(content = "User", modifier = Modifier.weight(1f))
             }
         }
     }
