@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,7 +58,7 @@ fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
 
 @Composable
 fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
-    val gameViewModel: GameViewModel = viewModel()
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
     if (isOpen) {
         Dialog(onDismissRequest = onDismiss) {
@@ -209,7 +210,7 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
 @Composable
 fun GameScreen() {
 
-    val gameViewModel: GameViewModel = viewModel()
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
     var isGameModeDialogOpen by remember { mutableStateOf(false) }
 
@@ -256,7 +257,10 @@ fun GameScreen() {
                 tint = Color(0xff5c5652),
                 modifier = Modifier
                     .size(48.dp)
-                    .clickable { gameViewModel.currentScreen = Screens.PAST_GAMES }
+                    .clickable {
+                        gameViewModel.loadPastGames()
+                        gameViewModel.currentScreen = Screens.PAST_GAMES
+                    }
             )
         }
 
