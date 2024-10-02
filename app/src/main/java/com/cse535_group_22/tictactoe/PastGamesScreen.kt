@@ -5,14 +5,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,7 +44,9 @@ fun TableCell(content: String, modifier: Modifier) {
 }
 
 @Composable
-fun PastGames() {
+fun PastGames(gameViewModel: GameViewModel) {
+    val pastGames by gameViewModel.pastGames.collectAsState()
+
     Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         TableCell(content = "Date Time", modifier = Modifier.weight(1.5f))
         TableCell(content = "Winner", modifier = Modifier.weight(1f))
@@ -51,10 +57,10 @@ fun PastGames() {
             .height(480.dp)
             .padding(16.dp)
     ) {
-        items(12) { rowIndex ->
+        items(pastGames) { game ->
             Row(modifier = Modifier.fillMaxWidth()) {
-                TableCell(content = "2024/05/31 22:55:22", modifier = Modifier.weight(1.5f))
-                TableCell(content = "User", modifier = Modifier.weight(1f))
+                TableCell(content = game.dateTime, modifier = Modifier.weight(1.5f))
+                TableCell(content = game.winner, modifier = Modifier.weight(1f))
             }
         }
     }
@@ -64,13 +70,13 @@ fun PastGames() {
 @Composable
 fun PastGamesScreen() {
 
-    val gameViewModel: GameViewModel = viewModel()
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
     Column(modifier = Modifier.fillMaxSize()) {
 
         Spacer(modifier = Modifier.height(64.dp))
 
-        PastGames()
+        PastGames(gameViewModel)
 
         Spacer(modifier = Modifier.height(32.dp))
 

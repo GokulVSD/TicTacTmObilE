@@ -1,13 +1,19 @@
 package com.cse535_group_22.tictactoe
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
-class GameViewModel() : ViewModel() {
+class GameViewModel(context: Context) : ViewModel() {
 
     var currentScreen by mutableStateOf(Screens.GAME)
 
@@ -33,6 +39,10 @@ class GameViewModel() : ViewModel() {
 
     var gameResult = "Tic Tac Toe"
 
+    val pastGamesDao = DatabaseBuilder.getInstance(context).pastGamesDao()
+
+    val pastGames = MutableStateFlow<List<PastGame>>(emptyList())
+
 
     fun getBoard(): List<List<Char>> {
         return boardState.map { boardRow -> boardRow.toList() }
@@ -57,6 +67,25 @@ class GameViewModel() : ViewModel() {
         currentPlayerSymbol = ' '
         playing.value = false
         connected.value = false
+    }
+
+    fun loadPastGames() {
+        viewModelScope.launch {
+            pastGames.value = pastGamesDao.getPastGames()
+        }
+    }
+
+    fun insertGame(gameDate: String, winner: String) {
+        val game = PastGame(dateTime = gameDate, winner = winner)
+        viewModelScope.launch {
+            pastGamesDao.insertGame(game)
+        }
+    }
+
+    fun getCurrentDateTime(): String {
+        val current = LocalDateTime.now()
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        return current.format(formatter)
     }
 
 
@@ -149,13 +178,13 @@ class GameViewModel() : ViewModel() {
                 VS.LOCAL -> if (winner == "X") "Player 1" else "Player 2"
                 VS.BLUETOOTH -> if (winner == "X") "Player 1" else "Player 2"
             }
-            // TODO: Store in past games
+            insertGame(getCurrentDateTime(), winner)
             gameResult = "$winner won by $method"
             return true
         }
 
         if (boardState.all { row -> row.all { it == 'X' || it == 'O' } }) {
-            // TODO: Store in past games
+            insertGame(getCurrentDateTime(), "Draw")
             gameResult = "Draw"
             return true
         }
