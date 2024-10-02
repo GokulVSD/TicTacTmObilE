@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 
 @Composable
-fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
+fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int) -> Unit) {
     Column {
         for (row in 0..2) {
             Row {
@@ -42,7 +42,13 @@ fun GameBoard(boardState: List<List<Char>>, onClick: (Int, Int) -> Unit) {
                             .padding(6.dp)
                             .aspectRatio(1f)
                             .background(Color.White)
-                            .clickable { onClick(row, col) }
+                            .then(
+                                if (playing) {
+                                    Modifier.clickable { onClick(row, col) }
+                                } else {
+                                    Modifier
+                                }
+                            )
                     ) {
                         when (boardState[row][col]) {
                             'X' -> Image(painterResource(R.drawable.ic_x), contentDescription = "X")
@@ -282,7 +288,7 @@ fun GameScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        GameBoard(boardState = gameViewModel.boardState, onClick = { row, col ->
+        GameBoard(boardState = gameViewModel.boardState, playing = gameViewModel.playing.collectAsState().value, onClick = { row, col ->
                 when (gameViewModel.vs) {
                     VS.AI -> {
                         gameViewModel.makeNextMove('X', row, col)
