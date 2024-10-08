@@ -75,8 +75,9 @@ class GameViewModel(context: Context) : ViewModel() {
         }
     }
 
-    fun insertGame(gameDate: String, winner: String) {
-        val game = PastGame(dateTime = gameDate, winner = winner)
+    fun insertGame(winner: String) {
+        var displayDifficulty = if (vs == VS.AI) difficulty.displayName else "PvP"
+        val game = PastGame(dateTime = getCurrentDateTime(), winner = winner, difficulty = displayDifficulty)
         viewModelScope.launch {
             pastGamesDao.insertGame(game)
         }
@@ -178,13 +179,13 @@ class GameViewModel(context: Context) : ViewModel() {
                 VS.LOCAL -> if (winner == "X") "Player 1" else "Player 2"
                 VS.BLUETOOTH -> if (winner == "X") "Player 1" else "Player 2"
             }
-            insertGame(getCurrentDateTime(), winner)
+            insertGame(winner)
             gameResult = "$winner won by $method"
             return true
         }
 
         if (boardState.all { row -> row.all { it == 'X' || it == 'O' } }) {
-            insertGame(getCurrentDateTime(), "Draw")
+            insertGame("Draw")
             gameResult = "Draw"
             return true
         }

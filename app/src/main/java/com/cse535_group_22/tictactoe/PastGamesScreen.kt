@@ -27,17 +27,15 @@ import androidx.compose.ui.unit.sp
 fun TableCell(content: String, modifier: Modifier) {
     Box(
         modifier = modifier
-            .padding(4.dp)
             .border(
                 BorderStroke(1.dp, Color(0xff5c5652)),
-                shape = RoundedCornerShape(10.dp)
             )
     ) {
         Text(
             text = content,
             color = Color(0xff5c5652),
             modifier = Modifier.align(Alignment.Center).padding(8.dp),
-            fontSize = 18.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
         )
     }
@@ -50,6 +48,7 @@ fun PastGames(gameViewModel: GameViewModel) {
     Row(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         TableCell(content = "Date Time", modifier = Modifier.weight(1.5f))
         TableCell(content = "Winner", modifier = Modifier.weight(1f))
+        TableCell(content = "Difficulty", modifier = Modifier.weight(1f))
     }
     LazyColumn(
         modifier = Modifier
@@ -61,6 +60,7 @@ fun PastGames(gameViewModel: GameViewModel) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 TableCell(content = game.dateTime, modifier = Modifier.weight(1.5f))
                 TableCell(content = game.winner, modifier = Modifier.weight(1f))
+                TableCell(content = game.difficulty, modifier = Modifier.weight(1f))
             }
         }
     }

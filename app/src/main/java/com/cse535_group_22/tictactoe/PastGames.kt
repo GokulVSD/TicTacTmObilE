@@ -11,6 +11,7 @@ data class PastGame(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val dateTime: String,
     val winner: String,
+    val difficulty: String,
 )
 
 @Dao
