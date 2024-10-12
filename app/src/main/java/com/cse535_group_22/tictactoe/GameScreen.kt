@@ -63,6 +63,37 @@ fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int
 }
 
 @Composable
+fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit) {
+    if (isOpen) {
+        Dialog(onDismissRequest = onDismiss) {
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                tonalElevation = 8.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Connect Devices",
+                        color = Color(0xff5c5652),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
 fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
@@ -219,7 +250,7 @@ fun GameScreen() {
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
     var isGameModeDialogOpen by remember { mutableStateOf(false) }
-
+    var isBluetoothDialogOpen by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -227,7 +258,7 @@ fun GameScreen() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Icon(
@@ -269,7 +300,33 @@ fun GameScreen() {
                     }
             )
         }
+        if(gameViewModel.vs == VS.BLUETOOTH){
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center
+            ){
+                Box(
+                    modifier = Modifier
+                        .border(
+                            BorderStroke(3.dp, Color(0xff5c5652)),
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .clickable { isBluetoothDialogOpen = true }
+                ) {
+                    Text(
+                        text = "Connect",
+                        color = Color(0xff5c5652),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .padding(12.dp)
+                    )
+                }
+            }
 
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -284,28 +341,30 @@ fun GameScreen() {
             )
         }
 
-        GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false })
 
+
+        GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false })
+        BluetoothModal(isOpen =  isBluetoothDialogOpen, onDismiss = { isBluetoothDialogOpen = false })
         Spacer(modifier = Modifier.height(16.dp))
 
         GameBoard(boardState = gameViewModel.boardState, playing = gameViewModel.playing.collectAsState().value, onClick = { row, col ->
-                when (gameViewModel.vs) {
-                    VS.AI -> {
-                        gameViewModel.makeNextMove('X', row, col)
-                        val result = getNextMoveFromAI(gameViewModel.getBoard(), gameViewModel.difficulty)
-                        gameViewModel.makeNextMove('O', result.first, result.second)
-                    }
-                    VS.LOCAL -> {
-                        gameViewModel.makeNextMove(gameViewModel.nextPlayer, row, col)
-                    }
-                    VS.BLUETOOTH -> {
-                        if (gameViewModel.currentPlayerSymbol == gameViewModel.nextPlayer) {
-                            gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol, row, col)
-                            // TODO: Add logic to transmit move to other player.
-                        }
+            when (gameViewModel.vs) {
+                VS.AI -> {
+                    gameViewModel.makeNextMove('X', row, col)
+                    val result = getNextMoveFromAI(gameViewModel.getBoard(), gameViewModel.difficulty)
+                    gameViewModel.makeNextMove('O', result.first, result.second)
+                }
+                VS.LOCAL -> {
+                    gameViewModel.makeNextMove(gameViewModel.nextPlayer, row, col)
+                }
+                VS.BLUETOOTH -> {
+                    if (gameViewModel.currentPlayerSymbol == gameViewModel.nextPlayer) {
+                        gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol, row, col)
+                        // TODO: Add logic to transmit move to other player.
                     }
                 }
-            },
+            }
+        },
         )
 
         Spacer(modifier = Modifier.height(56.dp))
