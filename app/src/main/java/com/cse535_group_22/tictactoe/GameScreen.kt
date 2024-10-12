@@ -1,5 +1,7 @@
 package com.cse535_group_22.tictactoe
 
+import android.Manifest
+import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -7,7 +9,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,6 +30,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothServerSocket
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.app.ActivityCompat
+import androidx.core.app.ActivityCompat.startActivityForResult
+import androidx.core.content.ContextCompat
+import java.io.IOException
+import java.util.UUID
 
 @Composable
 fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int) -> Unit) {
@@ -64,7 +83,49 @@ fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int
 
 @Composable
 fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit) {
+    val MY_UUID: UUID = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66")
+
+    val context = LocalContext.current
+    val bluetoothAdapter: BluetoothAdapter? = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? android.bluetooth.BluetoothManager)?.adapter
+
+    var discoveredDevices by remember { mutableStateOf(emptyList<BluetoothDevice>()) }
+    val bluetoothEnabled by remember { mutableStateOf(bluetoothAdapter?.isEnabled == true) }
+    var hasBluetoothPermission by remember { mutableStateOf(false) }
+
+    // Bluetooth permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            hasBluetoothPermission = permissions[Manifest.permission.BLUETOOTH_CONNECT] == true &&
+                    permissions[Manifest.permission.BLUETOOTH_SCAN] == true
+        }
+    )
+
+    // Check for permissions
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED) {
+            hasBluetoothPermission = true
+        } else {
+            permissionLauncher.launch(
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
+            )
+        }
+    }
+
     if (isOpen) {
+        // Check and ask the user to enable Bluetooth if it's not already enabled
+        if (!bluetoothEnabled) {
+            EnableBluetooth(bluetoothAdapter)
+        } else {
+            if (hasBluetoothPermission) {
+                // Discover devices
+                discoverBluetoothDevices(context, bluetoothAdapter) { devices ->
+                    discoveredDevices = devices
+                }
+            }
+        }
+
         Dialog(onDismissRequest = onDismiss) {
             Surface(
                 shape = MaterialTheme.shapes.large,
@@ -79,19 +140,178 @@ fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit) {
                 ) {
                     Text(
                         text = "Connect Devices",
-                        color = Color(0xff5c5652),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    if (hasBluetoothPermission) {
+                        // Display discovered devices
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            discoveredDevices.forEach { device ->
+                                Text(
+                                    text = device.name ?: device.address,
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.clickable {
+                                        // Connect to the selected device
+                                        connectToDevice(context, device, MY_UUID) { message ->
+                                            // Show a message or handle connection result
+                                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    } else {
+                        Text("Bluetooth permissions are required to display devices.")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
     }
 }
 
+fun connectToDevice(
+    context: Context,
+    device: BluetoothDevice,
+    uuid: UUID,
+    onMessage: (String) -> Unit
+) {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        onMessage("Bluetooth connect permission not granted")
+        return
+    }
+
+    Thread {
+        try {
+            val socket = device.createRfcommSocketToServiceRecord(uuid)
+
+            // Check if we still have the permission to connect before trying
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                socket.connect()
+                onMessage("Connected to ${device.name}")
+
+                // Send a message once connected
+                val outputStream = socket.outputStream
+                val message = "Hello"
+                outputStream.write(message.toByteArray())
+                outputStream.flush()
+
+                onMessage("Message sent to ${device.name}")
+
+                // Close the socket when done
+                socket.close()
+            } else {
+                onMessage("Bluetooth connect permission lost during connection attempt")
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            onMessage("Failed to connect: ${e.message}")
+        }
+    }.start()
+}
+
+// Receive data from another connected device
+fun receiveDataFromBluetooth(context: Context, uuid: UUID, onMessage: (String) -> Unit) {
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        onMessage("Bluetooth connect permission not granted")
+        return
+    }
+
+    val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    if (bluetoothAdapter == null) {
+        onMessage("Bluetooth not supported on this device")
+        return
+    }
+
+    Thread {
+        var serverSocket: BluetoothServerSocket? = null
+        try {
+            // Create a listening server socket
+            serverSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord("MyApp", uuid)
+            onMessage("Waiting for incoming connections...")
+
+            // Block until a connection is accepted
+            val socket = serverSocket.accept()
+
+            // Connection accepted, read data from the socket
+            onMessage("Connection accepted from ${socket.remoteDevice.name}")
+
+            val inputStream = socket.inputStream
+            val buffer = ByteArray(1024)  // Buffer to store the incoming data
+            var bytesRead: Int
+
+            // Read data from the input stream
+            while (true) {
+                bytesRead = inputStream.read(buffer)
+                val receivedMessage = String(buffer, 0, bytesRead)
+                onMessage("Message received: $receivedMessage")
+
+                // Close the socket after receiving the message
+                socket.close()
+                break
+            }
+
+        } catch (e: IOException) {
+            e.printStackTrace()
+            onMessage("Error: ${e.message}")
+        } finally {
+            serverSocket?.close()
+        }
+    }.start()
+}
+
+
+
+@Composable
+fun EnableBluetooth(bluetoothAdapter: BluetoothAdapter?) {
+    val context = LocalContext.current
+
+    if (bluetoothAdapter != null && !bluetoothAdapter.isEnabled) {
+        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+        startActivityForResult(context as Activity, enableBtIntent, 1, null)
+    }
+}
+
+fun discoverBluetoothDevices(context: Context, bluetoothAdapter: BluetoothAdapter?, onDevicesDiscovered: (List<BluetoothDevice>) -> Unit) {
+    if (bluetoothAdapter == null) return
+
+    val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val action: String? = intent.action
+            if (BluetoothDevice.ACTION_FOUND == action) {
+                // Discovery found a device
+                val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                if (device != null) {
+                    onDevicesDiscovered(listOf(device))
+                }
+            }
+        }
+    }
+
+    val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
+    context.registerReceiver(receiver, filter)
+
+    if (ActivityCompat.checkSelfPermission(
+            context,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ) != PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        // Request the necessary permissions here
+        return
+    }
+
+    bluetoothAdapter.startDiscovery()
+}
 
 @Composable
 fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
