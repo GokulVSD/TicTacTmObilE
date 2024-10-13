@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,7 +39,7 @@ import androidx.core.app.ActivityCompat.startActivityForResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.UUID
+import kotlin.random.Random
 
 @Composable
 fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int) -> Unit) {
@@ -75,6 +76,8 @@ fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int
 @Composable
 fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, devices: List<BluetoothDevice>) {
     val context = LocalContext.current
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(context))
+
     if (isOpen) {
         Dialog(onDismissRequest = onDismiss) {
             Surface(
@@ -108,7 +111,25 @@ fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, devices: List<Bluetoo
                                     modifier = Modifier.weight(1f)
                                         .border(
                                             BorderStroke(1.dp, Color(0xff5c5652)),
-                                        ).clickable { connectToDevice(context, device) }
+                                        ).clickable {
+                                            Toast.makeText(
+                                                context,
+                                                "Connecting to lobby, please wait",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            startBluetoothConnection(device, {
+                                                gameViewModel.connected.value = true
+                                                gameViewModel.statusKey++
+                                                onDismiss()
+                                            }, {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Failed to connect to lobby",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                onDismiss()
+                                            })
+                                        }
                                 ) {
                                     Text(
                                         text = device.name ?: device.address,
@@ -131,8 +152,9 @@ fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, devices: List<Bluetoo
 
 
 @Composable
-fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
-    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
+fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit, bluetoothAdapter: BluetoothAdapter, requestPermissions: () -> Unit) {
+    val context = LocalContext.current
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(context))
 
     if (isOpen) {
         Dialog(onDismissRequest = onDismiss) {
@@ -233,6 +255,11 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
                                 .clickable {
                                     gameViewModel.vs = VS.BLUETOOTH
                                     gameViewModel.resetGame()
+                                    requestPermissions()
+                                    if (!bluetoothAdapter.isEnabled) {
+                                        val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                                        startActivityForResult(context as Activity, enableBtIntent, 1, null)
+                                    }
                                 }
                         ) {
                             Text(
@@ -281,16 +308,21 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun GameScreen(bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice>, onRequestPermissions: () -> Unit) {
+fun GameScreen(
+    bluetoothAdapter: BluetoothAdapter,
+    devices: List<BluetoothDevice>,
+    requestPermissions: () -> Unit,
+    makeDiscoverable: () -> Unit,
+    startDiscovery: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     var aiResult by remember { mutableStateOf(Pair(0, 0)) }
 
-    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
+    val context = LocalContext.current
+    val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(context))
 
     var isGameModeDialogOpen by remember { mutableStateOf(false) }
     var isBluetoothDialogOpen by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -349,7 +381,7 @@ fun GameScreen(bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = gameViewModel.getStatus(gameViewModel.moveCounter),
+                text = gameViewModel.getStatus(gameViewModel.moveCounter, gameViewModel.statusKey),
                 color = Color(0xff5c5652),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -358,7 +390,7 @@ fun GameScreen(bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice
 
 
 
-        GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false })
+        GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false }, bluetoothAdapter, requestPermissions)
         BluetoothModal(isOpen =  isBluetoothDialogOpen, onDismiss = { isBluetoothDialogOpen = false }, devices)
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -379,8 +411,8 @@ fun GameScreen(bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice
                     gameViewModel.makeNextMove(gameViewModel.nextPlayer, row, col)
                 }
                 VS.BLUETOOTH -> {
-                    if (gameViewModel.currentPlayerSymbol == gameViewModel.nextPlayer) {
-                        gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol, row, col)
+                    if (gameViewModel.currentPlayerSymbol.value == gameViewModel.nextPlayer) {
+                        gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol.value, row, col)
                         // TODO: Add logic to transmit move to other player.
                     }
                 }
@@ -396,31 +428,102 @@ fun GameScreen(bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice
                 .padding(16.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            if(gameViewModel.vs == VS.BLUETOOTH && !gameViewModel.connected.collectAsState().value){
-                Box(
-                    modifier = Modifier
-                        .border(
-                            BorderStroke(3.dp, Color(0xff5c5652)),
-                            shape = RoundedCornerShape(20.dp)
+            if(gameViewModel.vs == VS.BLUETOOTH) {
+                if (!gameViewModel.connected.collectAsState().value) {
+                    Box(
+                        modifier = Modifier
+                            .border(
+                                BorderStroke(3.dp, Color(0xff5c5652)),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .clickable {
+                                makeDiscoverable()
+                                gameViewModel.waitingForConnection.value = true
+                                gameViewModel.statusKey++
+                                acceptBluetoothConnection(bluetoothAdapter) {
+                                    gameViewModel.waitingForConnection.value = false
+                                    if (bluetoothSocket != null) {
+                                        gameViewModel.connected.value = true
+                                    }
+                                    gameViewModel.statusKey++
+                                }
+                            }
+                    ) {
+                        Text(
+                            text = "Start Lobby",
+                            color = Color(0xff5c5652),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(12.dp)
                         )
-                        .clickable {
-                            onRequestPermissions()
-                            if (!bluetoothAdapter.isEnabled) {
-                                val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-                                startActivityForResult(context as Activity, enableBtIntent, 1, null)
-                            } else {
+                    }
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .border(
+                                BorderStroke(3.dp, Color(0xff5c5652)),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .clickable {
+                                serverSocket = null
+                                startDiscovery()
                                 isBluetoothDialogOpen = true
                             }
-                        }
-                ) {
-                    Text(
-                        text = "Connect",
-                        color = Color(0xff5c5652),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                    ) {
+                        Text(
+                            text = "Connect to Lobby",
+                            color = Color(0xff5c5652),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(12.dp)
+                        )
+                    }
+                } else if (gameViewModel.currentPlayerSymbol.collectAsState().value == ' ') {
+                    Box(
                         modifier = Modifier
-                            .padding(12.dp)
-                    )
+                            .border(
+                                BorderStroke(3.dp, Color(0xff5c5652)),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .clickable {
+                                gameViewModel.currentPlayerSymbol.value = 'X'
+                            }
+                    ) {
+                        Text(
+                            text = "ME",
+                            color = Color(0xff5c5652),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .border(
+                                BorderStroke(3.dp, Color(0xff5c5652)),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .clickable {
+                                gameViewModel.currentPlayerSymbol.value = 'O'
+                            }
+                    ) {
+                        Text(
+                            text = "OPPONENT",
+                            color = Color(0xff5c5652),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(12.dp)
+                        )
+                    }
                 }
             } else {
                 Box(

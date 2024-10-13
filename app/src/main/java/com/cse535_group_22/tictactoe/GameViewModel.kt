@@ -27,15 +27,19 @@ class GameViewModel(context: Context) : ViewModel() {
         mutableStateListOf(' ', ' ', ' ')
     )
 
-    var currentPlayerSymbol = ' '
+    var currentPlayerSymbol = MutableStateFlow(' ')
 
     var nextPlayer = 'X'
 
     val playing = MutableStateFlow(false)
 
+    val waitingForConnection = MutableStateFlow(false)
+
     val connected = MutableStateFlow(false)
 
     var moveCounter by mutableStateOf(0)
+
+    var statusKey by mutableStateOf(0)
 
     var gameResult = "Tic Tac Toe"
 
@@ -64,9 +68,11 @@ class GameViewModel(context: Context) : ViewModel() {
 
     fun resetGame() {
         resetBoard()
-        currentPlayerSymbol = ' '
+        currentPlayerSymbol.value = ' '
         playing.value = false
         connected.value = false
+        waitingForConnection.value = false
+        statusKey = 0
     }
 
     fun loadPastGames() {
@@ -90,7 +96,7 @@ class GameViewModel(context: Context) : ViewModel() {
     }
 
 
-    fun getStatus(counter: Int): String {
+    fun getStatus(counter: Int, key: Int): String {
         when (vs) {
             VS.AI -> {
                 if (playing.value) {
@@ -118,11 +124,15 @@ class GameViewModel(context: Context) : ViewModel() {
             }
             VS.BLUETOOTH -> {
                 if (!connected.value) {
-                    return "Start or connect to a lobby"
-                } else if (currentPlayerSymbol == ' ') {
+                    if (waitingForConnection.value) {
+                        return "Waiting for player to join"
+                    } else {
+                        return "Start or connect to a lobby"
+                    }
+                } else if (currentPlayerSymbol.value == ' ') {
                     return "Choose the first player"
                 } else if (playing.value) {
-                    if (currentPlayerSymbol == nextPlayer) {
+                    if (currentPlayerSymbol.value == nextPlayer) {
                         return "Your turn ($nextPlayer)"
                     } else {
                         return "Waiting for other player..."

@@ -26,10 +26,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestBluetoothPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            if (permissions[android.Manifest.permission.BLUETOOTH_SCAN] == true &&
-                permissions[android.Manifest.permission.BLUETOOTH_CONNECT] == true) {
-                startBluetoothDiscovery()
-            } else {
+            if (!permissions[android.Manifest.permission.BLUETOOTH_SCAN]!! || !permissions[android.Manifest.permission.BLUETOOTH_CONNECT]!!) {
                 Toast.makeText(baseContext, "Permissions denied", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -47,9 +44,18 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun startBluetoothDiscovery() {
+    private fun makeDiscoverable() {
+        val discoverableIntent: Intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+            putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+        }
+        startActivity(discoverableIntent)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startDiscovery() {
         if (bluetoothAdapter.isDiscovering) {
             bluetoothAdapter.cancelDiscovery()
+            discoveredDevices.clear()
         }
         bluetoothAdapter.startDiscovery()
     }
@@ -80,7 +86,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             TicTacToeTheme {
                 when (viewModel.currentScreen) {
-                    Screens.GAME -> GameScreen(bluetoothAdapter, discoveredDevices) { requestPermissions() }
+                    Screens.GAME -> GameScreen(bluetoothAdapter, discoveredDevices,
+                        { requestPermissions() }, { makeDiscoverable() }, { startDiscovery() })
                     Screens.SETTINGS -> SettingsScreen(bluetoothAdapter)
                     Screens.PAST_GAMES -> PastGamesScreen()
                 }
