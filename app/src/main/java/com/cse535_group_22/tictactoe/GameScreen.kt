@@ -43,9 +43,13 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
 
@@ -466,6 +470,8 @@ fun GameModeChooser(isOpen: Boolean, onDismiss: () -> Unit) {
 @Preview
 @Composable
 fun GameScreen() {
+    val scope = rememberCoroutineScope()
+    var aiResult by remember { mutableStateOf(Pair(0, 0)) }
 
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(LocalContext.current))
 
@@ -571,8 +577,14 @@ fun GameScreen() {
             when (gameViewModel.vs) {
                 VS.AI -> {
                     gameViewModel.makeNextMove('X', row, col)
-                    val result = getNextMoveFromAI(gameViewModel.getBoard(), gameViewModel.difficulty)
-                    gameViewModel.makeNextMove('O', result.first, result.second)
+                    if (gameViewModel.playing.value) {
+                        scope.launch {
+                            aiResult = withContext(Dispatchers.Default) {
+                                getNextMoveFromAI(gameViewModel.getBoard(), gameViewModel.difficulty)
+                            }
+                            gameViewModel.makeNextMove('O', aiResult.first, aiResult.second)
+                        }
+                    }
                 }
                 VS.LOCAL -> {
                     gameViewModel.makeNextMove(gameViewModel.nextPlayer, row, col)

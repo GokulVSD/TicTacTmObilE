@@ -1,5 +1,7 @@
 package com.cse535_group_22.tictactoe
 
+import kotlin.random.Random
+
 fun hasPlayerWon(board: List<List<Char>>, player: Char): Boolean {
     for (i in 0..2) {
         if ((board[i][0] == player && board[i][1] == player && board[i][2] == player) || // R
@@ -60,20 +62,32 @@ fun minimax(board: List<List<Char>>, depth: Int, isMaximizing: Boolean): Int {
 
 // Get the next move for the AI using Minimax
 fun getNextMoveFromAI(board: List<List<Char>>, difficulty: Difficulty): Pair<Int, Int> {
-    var bestScore = Int.MIN_VALUE
-    var bestMove = Pair(-1, -1)
+    val possibleMoves: MutableSet<Pair<Int, Int>> = mutableSetOf()
 
     for (row in 0..2) {
         for (col in 0..2) {
             if (board[row][col] == ' ') {
-                val newBoard = board.map { it.toMutableList() } //copy of board
-                newBoard[row][col] = 'O' // AI move
-                val score = minimax(newBoard, 0, false)
-                if (score > bestScore) {
-                    bestScore = score
-                    bestMove = Pair(row, col)
-                }
+                possibleMoves.add(Pair(row, col))
             }
+        }
+    }
+
+    if (difficulty == Difficulty.EASY) {
+        return possibleMoves.random()
+    } else if (difficulty == Difficulty.MEDIUM && Random.nextBoolean()) {
+        return possibleMoves.random()
+    }
+
+    var bestScore = Int.MIN_VALUE
+    var bestMove = Pair(-1, -1)
+
+    for (pair in possibleMoves) {
+        val newBoard = board.map { it.toMutableList() } //copy of board
+        newBoard[pair.first][pair.second] = 'O' // AI move
+        val score = minimax(newBoard, 0, false)
+        if (score > bestScore) {
+            bestScore = score
+            bestMove = pair
         }
     }
 
