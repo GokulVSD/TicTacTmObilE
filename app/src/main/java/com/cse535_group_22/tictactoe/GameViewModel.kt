@@ -239,7 +239,7 @@ class GameViewModel(context: Context) : ViewModel() {
 
         if (winner != "") {
             winner = when (vs) {
-                VS.AI -> if (winner == "X") "User" else "AI"
+                VS.AI -> if (winner == "X") "Human" else "Computer"
                 VS.LOCAL -> if (winner == "X") "Player 1" else "Player 2"
                 VS.BLUETOOTH -> if (winner == currentPlayerSymbol.value.toString()) "You" else "Opponent"
             }
