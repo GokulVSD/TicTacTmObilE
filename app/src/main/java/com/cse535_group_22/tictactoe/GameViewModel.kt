@@ -1,6 +1,8 @@
 package com.cse535_group_22.tictactoe
 
 import android.content.Context
+import android.util.Log
+import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +12,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -47,13 +51,35 @@ class GameViewModel(context: Context) : ViewModel() {
 
     val pastGames = MutableStateFlow<List<PastGame>>(emptyList())
 
+    // Needed for BT JSON only
+    var myMACAddress = ""
+    var opponentMACAddress = ""
+    var xMACAddress = ""
+    var oMACAddress = ""
+    var draw = false
+    var winnerMAC = " "
+
 
     fun getBoard(): List<List<Char>> {
         return boardState.map { boardRow -> boardRow.toList() }
     }
 
+    fun listToJSONArray(charList: List<List<Char>>): JSONArray {
+        val jsonArray = JSONArray()
 
-    fun resetBoard(
+        for (innerList in charList) {
+            val innerJsonArray = JSONArray()
+            for (char in innerList) {
+                innerJsonArray.put(char.toString())
+            }
+            jsonArray.put(innerJsonArray)
+        }
+
+        return jsonArray
+    }
+
+
+    private fun resetBoard(
         board: List<List<Char>> = List(3) { List(3) { ' ' } }
     ) {
         for (row in 0..2) {
@@ -68,11 +94,22 @@ class GameViewModel(context: Context) : ViewModel() {
 
     fun resetGame() {
         resetBoard()
-        currentPlayerSymbol.value = ' '
         playing.value = false
-        connected.value = false
-        waitingForConnection.value = false
         statusKey = 0
+        draw = false
+        winnerMAC = " "
+
+        if (vs != VS.BLUETOOTH) {
+            myMACAddress = ""
+            opponentMACAddress = ""
+            xMACAddress = ""
+            oMACAddress = ""
+            currentPlayerSymbol.value = ' '
+            connected.value = false
+            waitingForConnection.value = false
+        } else {
+            sendData(getStateAsJsonString(resetGame = true, choosingPlayer = false))
+        }
     }
 
     fun loadPastGames() {
@@ -130,7 +167,7 @@ class GameViewModel(context: Context) : ViewModel() {
                         return "Start or connect to a lobby"
                     }
                 } else if (currentPlayerSymbol.value == ' ') {
-                    return "Choose the first player"
+                    return "Who goes first"
                 } else if (playing.value) {
                     if (currentPlayerSymbol.value == nextPlayer) {
                         return "Your turn ($nextPlayer)"
@@ -187,7 +224,12 @@ class GameViewModel(context: Context) : ViewModel() {
             winner = when (vs) {
                 VS.AI -> if (winner == "X") "User" else "AI"
                 VS.LOCAL -> if (winner == "X") "Player 1" else "Player 2"
-                VS.BLUETOOTH -> if (winner == "X") "Player 1" else "Player 2"
+                VS.BLUETOOTH -> if (winner == currentPlayerSymbol.value.toString()) "You" else "Opponent"
+            }
+            if (winner == "You") {
+                winnerMAC = myMACAddress
+            } else {
+                winnerMAC = opponentMACAddress
             }
             insertGame(winner)
             gameResult = "$winner won by $method"
@@ -197,6 +239,7 @@ class GameViewModel(context: Context) : ViewModel() {
         if (boardState.all { row -> row.all { it == 'X' || it == 'O' } }) {
             insertGame("Draw")
             gameResult = "Draw"
+            draw = true
             return true
         }
 
@@ -218,5 +261,88 @@ class GameViewModel(context: Context) : ViewModel() {
         }
 
         nextPlayer = if (nextPlayer == 'X') 'O' else 'X'
+    }
+
+
+    fun getStateAsJsonString(resetGame: Boolean, choosingPlayer: Boolean): String {
+        val jsonMessage = JSONObject()
+
+        val gameState = JSONObject()
+
+        gameState.put("board", listToJSONArray(getBoard()))
+        gameState.put("turn", moveCounter)
+        gameState.put("winner", winnerMAC)
+        gameState.put("draw", draw)
+        gameState.put("connectionEstablished", connected.value && myMACAddress != "")
+        gameState.put("reset", resetGame)
+
+        jsonMessage.put("gameState", gameState)
+
+        val metadata = JSONObject()
+
+        val choice1 = JSONObject()
+        choice1.put("id", "player1")
+        choice1.put("name", myMACAddress)
+
+        val choice2 = JSONObject()
+        choice2.put("id", "player2")
+        choice2.put("name", opponentMACAddress)
+
+        metadata.put("choices", JSONArray(arrayOf(choice1, choice2)))
+
+        if (myMACAddress != "") {
+            val miniGame = JSONObject()
+
+            miniGame.put("player1Choice", xMACAddress)
+            if (!choosingPlayer) {
+                miniGame.put("player2Choice", xMACAddress)
+            }
+
+            metadata.put("miniGame", miniGame)
+        }
+
+        jsonMessage.put("metadata", metadata)
+
+        return jsonMessage.toString()
+    }
+
+    fun processJsonString(response: String) {
+        val jsonMessage = JSONObject(response)
+        val gameState = jsonMessage.getJSONObject("gameState")
+        val metadata = jsonMessage.getJSONObject("metadata")
+
+        if (!playing.value) {
+            if (!gameState.getBoolean("connectionEstablished")) {
+                val choices = metadata.getJSONArray("choices")
+                myMACAddress = choices.getJSONObject(1).getString("name")
+                return
+            }
+            val miniGame = metadata.getJSONObject("miniGame")
+            xMACAddress =  miniGame.getString("player1Choice")
+            if (myMACAddress == xMACAddress) {
+                oMACAddress = opponentMACAddress
+                currentPlayerSymbol.value = 'X'
+            } else {
+                oMACAddress = myMACAddress
+                currentPlayerSymbol.value = 'O'
+            }
+            if (!miniGame.has("player2Choice")) {
+                sendData(getStateAsJsonString(resetGame = false, choosingPlayer = false))
+            }
+            playing.value = true
+        } else if (gameState.getBoolean("reset")) {
+            resetGame()
+            playing.value = true
+        } else {
+            val boardRows = gameState.getJSONArray("board")
+            for (row in 0..2) {
+                val boardRow = boardRows.getJSONArray(row)
+                for (col in 0..2) {
+                    if (boardState[row][col].toString() != boardRow[col]) {
+                        makeNextMove(nextPlayer, row, col)
+                    }
+                }
+            }
+        }
     }
 }

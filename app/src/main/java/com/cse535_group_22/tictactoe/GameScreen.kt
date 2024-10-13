@@ -74,7 +74,7 @@ fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int
 }
 
 @Composable
-fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, devices: List<BluetoothDevice>) {
+fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice>) {
     val context = LocalContext.current
     val gameViewModel: GameViewModel = viewModel(factory = GameViewModelFactory(context))
 
@@ -118,8 +118,11 @@ fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, devices: List<Bluetoo
                                                 Toast.LENGTH_SHORT
                                             ).show()
                                             startBluetoothConnection(device, {
+                                                gameViewModel.opponentMACAddress = device.address
                                                 gameViewModel.connected.value = true
                                                 gameViewModel.statusKey++
+                                                listenForResponses(gameViewModel)
+                                                sendData(gameViewModel.getStateAsJsonString(resetGame = false, choosingPlayer = false))
                                                 onDismiss()
                                             }, {
                                                 Toast.makeText(
@@ -391,7 +394,7 @@ fun GameScreen(
 
 
         GameModeChooser(isOpen = isGameModeDialogOpen, onDismiss = { isGameModeDialogOpen = false }, bluetoothAdapter, requestPermissions)
-        BluetoothModal(isOpen =  isBluetoothDialogOpen, onDismiss = { isBluetoothDialogOpen = false }, devices)
+        BluetoothModal(isOpen =  isBluetoothDialogOpen, onDismiss = { isBluetoothDialogOpen = false }, bluetoothAdapter, devices)
         Spacer(modifier = Modifier.height(16.dp))
 
         GameBoard(boardState = gameViewModel.boardState, playing = gameViewModel.playing.collectAsState().value, onClick = { row, col ->
@@ -413,7 +416,7 @@ fun GameScreen(
                 VS.BLUETOOTH -> {
                     if (gameViewModel.currentPlayerSymbol.value == gameViewModel.nextPlayer) {
                         gameViewModel.makeNextMove(gameViewModel.currentPlayerSymbol.value, row, col)
-                        // TODO: Add logic to transmit move to other player.
+                        sendData(gameViewModel.getStateAsJsonString(resetGame = false, choosingPlayer = false))
                     }
                 }
             }
@@ -428,7 +431,7 @@ fun GameScreen(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.Center
         ) {
-            if(gameViewModel.vs == VS.BLUETOOTH) {
+            if(gameViewModel.vs == VS.BLUETOOTH && gameViewModel.currentPlayerSymbol.collectAsState().value == ' ') {
                 if (!gameViewModel.connected.collectAsState().value) {
                     Box(
                         modifier = Modifier
@@ -443,7 +446,11 @@ fun GameScreen(
                                 acceptBluetoothConnection(bluetoothAdapter) {
                                     gameViewModel.waitingForConnection.value = false
                                     if (bluetoothSocket != null) {
+                                        gameViewModel.opponentMACAddress = bluetoothSocket!!.remoteDevice.address
                                         gameViewModel.connected.value = true
+                                        gameViewModel.statusKey++
+                                        listenForResponses(gameViewModel)
+                                        sendData(gameViewModel.getStateAsJsonString(resetGame = false, choosingPlayer = false))
                                     }
                                     gameViewModel.statusKey++
                                 }
@@ -491,6 +498,18 @@ fun GameScreen(
                             )
                             .clickable {
                                 gameViewModel.currentPlayerSymbol.value = 'X'
+                                gameViewModel.xMACAddress = gameViewModel.myMACAddress
+                                gameViewModel.oMACAddress = gameViewModel.opponentMACAddress
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        sendData(
+                                            gameViewModel.getStateAsJsonString(
+                                                resetGame = false,
+                                                choosingPlayer = true
+                                            )
+                                        )
+                                    }
+                                }
                             }
                     ) {
                         Text(
@@ -513,6 +532,18 @@ fun GameScreen(
                             )
                             .clickable {
                                 gameViewModel.currentPlayerSymbol.value = 'O'
+                                gameViewModel.xMACAddress = gameViewModel.opponentMACAddress
+                                gameViewModel.oMACAddress = gameViewModel.myMACAddress
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        sendData(
+                                            gameViewModel.getStateAsJsonString(
+                                                resetGame = false,
+                                                choosingPlayer = true
+                                            )
+                                        )
+                                    }
+                                }
                             }
                     ) {
                         Text(
@@ -533,7 +564,7 @@ fun GameScreen(
                             shape = RoundedCornerShape(30.dp)
                         )
                         .clickable {
-                            gameViewModel.resetBoard()
+                            gameViewModel.resetGame()
                             gameViewModel.playing.value = true
                         }
                 ) {

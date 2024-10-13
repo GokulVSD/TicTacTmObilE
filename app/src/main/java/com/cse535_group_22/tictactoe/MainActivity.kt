@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
         val factory = GameViewModelFactory(applicationContext)
         viewModel = ViewModelProvider(this, factory)[GameViewModel::class.java]
 
+        requestPermissions()
+
         enableEdgeToEdge()
         setContent {
             TicTacToeTheme {

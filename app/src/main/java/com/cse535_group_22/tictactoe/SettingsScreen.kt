@@ -115,22 +115,6 @@ fun SettingsScreen(bluetoothAdapter: BluetoothAdapter) {
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "BT Address: ${bluetoothAdapter.address}",
-                color = Color(0xff5c5652),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
         Spacer(modifier = Modifier.height(250.dp))
 
         Row(
