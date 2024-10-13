@@ -1,13 +1,10 @@
 package com.cse535_group_22.tictactoe
 
 import android.content.Context
-import android.util.Log
-import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,7 +89,7 @@ class GameViewModel(context: Context) : ViewModel() {
     }
 
 
-    fun resetGame() {
+    fun resetGame(broadcastReset: Boolean = false) {
         resetBoard()
         playing.value = false
         statusKey = 0
@@ -100,15 +97,35 @@ class GameViewModel(context: Context) : ViewModel() {
         winnerMAC = " "
 
         if (vs != VS.BLUETOOTH) {
-            myMACAddress = ""
-            opponentMACAddress = ""
-            xMACAddress = ""
-            oMACAddress = ""
-            currentPlayerSymbol.value = ' '
-            connected.value = false
-            waitingForConnection.value = false
-        } else {
+            resetBluetooth()
+        } else if (broadcastReset) {
             sendData(getStateAsJsonString(resetGame = true, choosingPlayer = false))
+        }
+    }
+
+    fun resetBluetooth() {
+        myMACAddress = ""
+        opponentMACAddress = ""
+        xMACAddress = ""
+        oMACAddress = ""
+        currentPlayerSymbol.value = ' '
+        connected.value = false
+        waitingForConnection.value = false
+        if (bluetoothSocket != null) {
+            try {
+                bluetoothSocket?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            bluetoothSocket = null
+        }
+        if (serverSocket != null) {
+            try {
+                serverSocket?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            serverSocket = null
         }
     }
 
@@ -311,7 +328,10 @@ class GameViewModel(context: Context) : ViewModel() {
         val gameState = jsonMessage.getJSONObject("gameState")
         val metadata = jsonMessage.getJSONObject("metadata")
 
-        if (!playing.value) {
+        if (gameState.getBoolean("reset")) {
+            resetGame()
+            playing.value = true
+        } else if (!playing.value) {
             if (!gameState.getBoolean("connectionEstablished")) {
                 val choices = metadata.getJSONArray("choices")
                 myMACAddress = choices.getJSONObject(1).getString("name")
@@ -329,9 +349,6 @@ class GameViewModel(context: Context) : ViewModel() {
             if (!miniGame.has("player2Choice")) {
                 sendData(getStateAsJsonString(resetGame = false, choosingPlayer = false))
             }
-            playing.value = true
-        } else if (gameState.getBoolean("reset")) {
-            resetGame()
             playing.value = true
         } else {
             val boardRows = gameState.getJSONArray("board")

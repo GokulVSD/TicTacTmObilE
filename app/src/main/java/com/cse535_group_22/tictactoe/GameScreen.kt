@@ -1,5 +1,6 @@
 package com.cse535_group_22.tictactoe
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -39,7 +40,6 @@ import androidx.core.app.ActivityCompat.startActivityForResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.random.Random
 
 @Composable
 fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int) -> Unit) {
@@ -73,6 +73,7 @@ fun GameBoard(boardState: List<List<Char>>, playing: Boolean, onClick: (Int, Int
     }
 }
 
+@SuppressLint("MissingPermission")
 @Composable
 fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, bluetoothAdapter: BluetoothAdapter, devices: List<BluetoothDevice>) {
     val context = LocalContext.current
@@ -106,41 +107,50 @@ fun BluetoothModal(isOpen: Boolean, onDismiss: () -> Unit, bluetoothAdapter: Blu
                             .padding(16.dp)
                     ) {
                         items(devices) { device ->
-                            Row(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier.weight(1f)
-                                        .border(
-                                            BorderStroke(1.dp, Color(0xff5c5652)),
-                                        ).clickable {
-                                            Toast.makeText(
-                                                context,
-                                                "Connecting to lobby, please wait",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            startBluetoothConnection(device, {
-                                                gameViewModel.opponentMACAddress = device.address
-                                                gameViewModel.connected.value = true
-                                                gameViewModel.statusKey++
-                                                listenForResponses(gameViewModel)
-                                                sendData(gameViewModel.getStateAsJsonString(resetGame = false, choosingPlayer = false))
-                                                onDismiss()
-                                            }, {
+                            if (device.name != null) {
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Box(
+                                        modifier = Modifier.weight(1f)
+                                            .border(
+                                                BorderStroke(1.dp, Color(0xff5c5652)),
+                                            ).clickable {
                                                 Toast.makeText(
                                                     context,
-                                                    "Failed to connect to lobby",
-                                                    Toast.LENGTH_SHORT
+                                                    "Connecting to lobby, please wait",
+                                                    Toast.LENGTH_LONG
                                                 ).show()
-                                                onDismiss()
-                                            })
-                                        }
-                                ) {
-                                    Text(
-                                        text = device.name ?: device.address,
-                                        color = Color(0xff5c5652),
-                                        modifier = Modifier.align(Alignment.Center).padding(8.dp),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                    )
+                                                startBluetoothConnection(device, {
+                                                    gameViewModel.opponentMACAddress =
+                                                        device.address
+                                                    gameViewModel.connected.value = true
+                                                    gameViewModel.statusKey++
+                                                    listenForResponses(gameViewModel)
+                                                    sendData(
+                                                        gameViewModel.getStateAsJsonString(
+                                                            resetGame = false,
+                                                            choosingPlayer = false
+                                                        )
+                                                    )
+                                                    onDismiss()
+                                                }, {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed to connect to lobby",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                    onDismiss()
+                                                })
+                                            }
+                                    ) {
+                                        Text(
+                                            text = device.name,
+                                            color = Color(0xff5c5652),
+                                            modifier = Modifier.align(Alignment.Center)
+                                                .padding(8.dp),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -564,7 +574,7 @@ fun GameScreen(
                             shape = RoundedCornerShape(30.dp)
                         )
                         .clickable {
-                            gameViewModel.resetGame()
+                            gameViewModel.resetGame(broadcastReset = true)
                             gameViewModel.playing.value = true
                         }
                 ) {
