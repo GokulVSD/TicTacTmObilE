@@ -75,7 +75,3 @@ Each team member has worked on different aspects of the project. To ensure colla
 - **Source Code**: Submitted via GitHub repository.
 - **Demo Video**: Demonstration video uploaded to YouTube, link included in the project report.
 - **Project Report**: A technical document explaining the implementation details (using the IEEE Transactions format).
-
----
-
-This README provides clear instructions for setting up and running the project, along with an overview of the technical aspects and contribution guidelines. Let me know if you'd like to make any adjustments!
