@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is a mobile application that implements the classic Tic-Tac-Toe game, allowing a human player to play against an AI on Android or iOS platforms. The game uses the Minimax algorithm with alpha-beta pruning to determine the AI's moves. Additionally, the app supports various difficulty modes and the option to store game history on the device.
+The goal of this group project is to create a Tic-Tac-Toe game on Android that allows an AI to play against a human opponent. The primary goal is to create a game where the computer plays against a human player using the Minimax algorithm with alpha-beta pruning. In addition to this, the app supports player vs local player gameplay, where each player takes turns. Finally, the app also supports player vs Bluetooth player, where by two devices which have the app installed can play via a Bluetooth connection. The app keeps track of past games, and allows you to customize the difficulty of the AI. It uses Jetpack Compose components for the UI, Room for storage of past games, and interfaces with Android's Bluetooth APIs.
 
 ### Team Members:
 
@@ -22,56 +22,77 @@ This project is a mobile application that implements the classic Tic-Tac-Toe gam
    - Easy: AI takes random actions.
    - Medium: AI takes random actions 50% of the time and optimal actions the other 50%.
    - Hard: AI plays optimally in every turn.
+5. **Game Modes**:
+   - Player vs AI
+   - Player vs Local Player
+   - Player vs Bluetooth Player
 
 ## Hardware Requirements:
 
-- **Android or iOS Device**:
-  - Android: A phone running Android with Android Studio installed for development.
-  - iOS: An iPhone with Xcode installed for development.
+- **Android device running Android 13 or greater for playing.**
+- **Two devices are needed for Bluetooth gameplay, the devices need to have Bluetooth support.**
+
 - **Computer**:
-  - For Android development: Ubuntu, Windows, or Mac.
-  - For iOS development: MacOS is required.
+  - For Android development and compilation: Ubuntu, Windows, or Mac versions that support Android Studio Koala.
+  - Android Studio Koala was used to develop the app.
 - **USB Cable**: To connect your phone to the computer unless you're using an emulator.
-- **Secondary Device**: A second phone or a camera for demo purposes and video recording.
 
-## Software Requirements:
 
-- **Android Studio**: Required for Android development.
-- **Xcode**: Required for iOS development.
-- **Git**: For version control and collaboration.
-- **GitHub**: A private GitHub repository is used to submit the project.
-
-## Setup Instructions:
+## Setup & Usage Instructions:
 
 1. Clone the repository using Git:
    ```bash
-   git clone https://github.com/your-repository-link.git
+   git clone https://github.com/GokulVSD/CSE535_P2_TicTacToe_Group_22
    ```
-2. Open the project in Android Studio (for Android) or Xcode (for iOS).
-3. Install any required dependencies through Android Studio or Xcode.
-4. Connect your device or set up an emulator.
-5. Run the project using the "Run" option in your IDE.
+2. Install Android Studio Koala and necessary dependencies.
+3. Open the repository using Android Studio.
+4. Connect your device with USB debugging enabled or set up an emulator (emulator can only test single player).
+5. Run the project using the "Run" option in your IDE, this should install the app on the device/emulator.
+6. To start the game, click the play button.
+7. You can reset any time.
+8. Switch gamemodes using the button in the top middle.
+9. The settings screen accessible by clicking the settings cog, will show you your Bluetooth device name, and the ability to switch difficulty, which can be done at any time.
+10. The past games screen keeps track of past games that have completed.
+11. To play Player vs Local Player, players take turns on the same device until the game ends.
+12. For player vs Bluetooth Player, one of the devices needs to create a lobby, subsequently, within 300 seconds, the other device needs to join the lobby by clicking on the Bluetooth device name of the lobby owner.
 
-## Running the App:
 
-1. **Install the APK (for Android)**:
-   - Build and install the APK on your Android device.
-   - Run the app and start a new game from the main menu.
-2. **Running on iOS**:
-   - Open the project in Xcode.
-   - Build and deploy the app to your iPhone.
+## Software Requirements:
 
-## Additional Features (Optional Extra Credit):
 
-1. **Bluetooth Multiplayer**: Connect two devices via Bluetooth to allow human vs. human gameplay.
-2. **Human vs Human on Same Device**: Two players can alternate turns on the same device.
+### Android API:
 
-## Contribution Guidelines:
+- Android min SDK: 33
+- Android compile SDK: 34
 
-Each team member has worked on different aspects of the project. To ensure collaboration, we used Git for version control. Every member worked on individual branches and merged their code after reviews. Frequent and descriptive commits are a must.
+### Dependencies
 
-## Submission Details:
+- agp = "8.6.0"
+- hiltAndroid = "2.51.1"
+- hiltAndroidCompiler = "2.51.1"
+- kotlin = "1.9.0"
+- coreKtx = "1.13.1"
+- junit = "4.13.2"
+- junitVersion = "1.2.1"
+- espressoCore = "3.6.1"
+- lifecycleRuntimeKtx = "2.8.5"
+- activityCompose = "1.9.2"
+- composeBom = "2024.04.01"
+- lifecycleViewmodelCompose = "2.8.6"
+- roomCompiler = "2.6.1"
+- roomKtx = "2.6.1"
+- roomRuntime = "2.6.1"
+- lifecycleViewmodelAndroid = "2.8.6"
+- daggerHilt = "2.42"
 
-- **Source Code**: Submitted via GitHub repository.
-- **Demo Video**: Demonstration video uploaded to YouTube, link included in the project report.
-- **Project Report**: A technical document explaining the implementation details (using the IEEE Transactions format).
+
+# Submission:
+
+This project code submission is accompanied by a report as well links to demo videos.
+
+
+Report: report/Project2_Group22_Report.pdf
+
+Main Demo Video: https://youtu.be/7Z2-RhYoIQc
+
+Extra-Credit Demo Video: https://youtu.be/O1AZ4IyYz-U
