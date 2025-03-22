@@ -1,4 +1,4 @@
-# CSE535_P2_TicTacToe_Group_22
+# TicTacTmObilE
 
 ## Overview
 
@@ -42,7 +42,7 @@ The goal of this group project is to create a Tic-Tac-Toe game on Android that a
 
 1. Clone the repository using Git:
    ```bash
-   git clone https://github.com/GokulVSD/CSE535_P2_TicTacToe_Group_22
+   git clone https://github.com/GokulVSD/TicTacTmObilE
    ```
 2. Install Android Studio Koala and necessary dependencies.
 3. Open the repository using Android Studio.
