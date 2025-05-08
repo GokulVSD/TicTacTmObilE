@@ -4,15 +4,6 @@
 
 The goal of this group project is to create a Tic-Tac-Toe game on Android that allows an AI to play against a human opponent. The primary goal is to create a game where the computer plays against a human player using the Minimax algorithm with alpha-beta pruning. In addition to this, the app supports player vs local player gameplay, where each player takes turns. Finally, the app also supports player vs Bluetooth player, where by two devices which have the app installed can play via a Bluetooth connection. The app keeps track of past games, and allows you to customize the difficulty of the AI. It uses Jetpack Compose components for the UI, Room for storage of past games, and interfaces with Android's Bluetooth APIs.
 
-### Team Members:
-
-- Member 1: Anusha Alangar, aalanga1@asu.edu
-- Member 2: Gokul Vasudeva, gvasude2@asu.edu
-- Member 3: Greha Shah, gshah11@asu.edu
-- Member 4: Manan Shah, mshah131@asu.edu
-- Member 5: Natasha Koli, nkoli1@asu.edu
-- Member 6: Shashank Venkataramana, svenk163@asu.edu
-
 ## Features:
 
 1. **Human vs AI**: The user can play against the AI with three difficulty modes (Easy, Medium, Hard).
@@ -84,15 +75,3 @@ The goal of this group project is to create a Tic-Tac-Toe game on Android that a
 - roomRuntime = "2.6.1"
 - lifecycleViewmodelAndroid = "2.8.6"
 - daggerHilt = "2.42"
-
-
-# Submission:
-
-This project code submission is accompanied by a report as well links to demo videos.
-
-
-Report: report/Project2_Group22_Report.pdf
-
-Main Demo Video: https://youtu.be/7Z2-RhYoIQc
-
-Extra-Credit Demo Video: https://youtu.be/O1AZ4IyYz-U
